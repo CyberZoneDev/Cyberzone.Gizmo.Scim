@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Cyberzone.Gizmo.Scim.Core/Cyberzone.Gizmo.Scim.Core.csproj" />
+    <Project Path="src/Cyberzone.Gizmo.Scim.V2/Cyberzone.Gizmo.Scim.V2.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cyberzone.Gizmo.Scim.Core.Tests/Cyberzone.Gizmo.Scim.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="README.md" />
+  </Folder>
+</Solution>

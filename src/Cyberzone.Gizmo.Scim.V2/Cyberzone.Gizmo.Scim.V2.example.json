@@ -1,0 +1,7 @@
+{
+  "BearerToken": "change-me-to-a-long-random-string",
+  "LinkAttributeName": "AuthentikId",
+  "AllowedAttributes": [],
+  "PublicBaseUrl": "",
+  "RejectDuplicateEmail": false
+}

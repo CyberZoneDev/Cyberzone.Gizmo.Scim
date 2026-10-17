@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>Cyberzone.Gizmo.Scim.V2</RootNamespace>
+    <AssemblyName>Cyberzone.Gizmo.Scim.V2</AssemblyName>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <!-- The server loads plugins with Assembly.LoadFrom, a deps.json next to the DLL is never read. -->
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <!-- Gizmo server is Windows-only; its assemblies are marked as such. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <!-- Version conflicts come from Gizmo server references (Private=false), not shipped with the module. -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Shared SCIM logic is compiled in: the server does not resolve extra DLLs next to the module. -->
+  <ItemGroup>
+    <Compile Include="..\Cyberzone.Gizmo.Scim.Core\**\*.cs" Exclude="..\Cyberzone.Gizmo.Scim.Core\obj\**;..\Cyberzone.Gizmo.Scim.Core\bin\**" LinkBase="Core" />
+  </ItemGroup>
+
+  <!-- Gizmo server assemblies, referenced from a local install (see Directory.Build.props.user.example). -->
+  <ItemGroup>
+    <Reference Include="GizmoService">
+      <HintPath>$(GizmoV2Dir)\GizmoService.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="DataInterfaces">
+      <HintPath>$(GizmoV2Dir)\DataInterfaces.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Gizmo.DAL">
+      <HintPath>$(GizmoV2Dir)\Gizmo.DAL.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Gizmo.DAL.Entities">
+      <HintPath>$(GizmoV2Dir)\Gizmo.DAL.Entities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System.ComponentModel.Composition">
+      <HintPath>$(GizmoV2Dir)\System.ComponentModel.Composition.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="EntityFramework">
+      <HintPath>$(GizmoV2Dir)\EntityFramework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Cyberzone.Gizmo.Scim.V2.example.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CheckGizmoV2Dir" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(GizmoV2Dir)\GizmoService.dll')">
+    <Error Text="GizmoV2Dir is not set or does not contain GizmoService.dll. Copy Directory.Build.props.user.example to Directory.Build.props.user and set the path." />
+  </Target>
+
+</Project>

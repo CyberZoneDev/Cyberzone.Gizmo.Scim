@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Folder that contains GizmoService.dll of the Gizmo v2 server -->
+    <GizmoV2Dir>X:\Gizmo Server</GizmoV2Dir>
+  </PropertyGroup>
+</Project>
