@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -49,8 +50,10 @@ public sealed class ScimModulePlugin : GizmoServiceModulePluginBase
                 partManager.ApplicationParts.Add(new AssemblyPart(assembly));
             }
 
-            logger?.LogInformation("[SCIM] Endpoint registered at /scim/v2");
-            server.LogAdd("[SCIM] Endpoint registered at /scim/v2", LogCategories.Configuration,
+            var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                          ?? assembly.GetName().Version?.ToString();
+            logger?.LogInformation("[SCIM] Endpoint registered at /scim/v2, version {Version}", version);
+            server.LogAdd($"[SCIM] Endpoint registered at /scim/v2, version {version}", LogCategories.Configuration,
                 EventTypes.Information);
         }
         catch (Exception exception)

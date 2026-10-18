@@ -6,6 +6,14 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Authors>Saph1s</Authors>
+    <Product>Cyberzone.Gizmo.Scim</Product>
+    <RepositoryUrl>https://github.com/CyberZoneDev/Cyberzone.Gizmo.Scim</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
   <!-- Local paths to Gizmo server builds (not committed). Copy Directory.Build.props.user.example to Directory.Build.props.user. -->
   <Import Project="$(MSBuildThisFileDirectory)Directory.Build.props.user" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.props.user')" />
 </Project>
