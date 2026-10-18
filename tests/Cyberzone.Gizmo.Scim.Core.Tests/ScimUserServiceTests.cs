@@ -68,6 +68,41 @@ public class ScimUserServiceTests
     }
 
     [Fact]
+    public void Create_sets_random_password()
+    {
+        _service.Create(User("ak-1", "john"), BaseUrl);
+        _service.Create(User("ak-2", "jane"), BaseUrl);
+
+        Assert.Equal(2, _store.Passwords.Count);
+        Assert.NotEqual(_store.Passwords.Values.First(), _store.Passwords.Values.Last());
+        Assert.All(_store.Passwords.Values, x => Assert.True(x.Length >= 32));
+    }
+
+    [Fact]
+    public void Update_sets_password_only_when_missing()
+    {
+        _service.Create(User("ak-1", "john"), BaseUrl);
+        var user = _store.Users.Single();
+        _store.Passwords.Remove(user.Id);
+
+        _service.Replace(user.Id.ToString(), User("ak-1", "john"), BaseUrl);
+        Assert.True(_store.HasPassword(user.Id));
+
+        _store.Passwords[user.Id] = "set-by-operator";
+        _service.Replace(user.Id.ToString(), User("ak-1", "john"), BaseUrl);
+        Assert.Equal("set-by-operator", _store.Passwords[user.Id]);
+    }
+
+    [Fact]
+    public void Random_password_can_be_turned_off()
+    {
+        var service = new ScimUserService(_store, new ScimSettings { SetRandomPassword = false });
+        service.Create(User("ak-1", "john"), BaseUrl);
+
+        Assert.Empty(_store.Passwords);
+    }
+
+    [Fact]
     public void Replace_renames_and_keeps_collision_suffix()
     {
         _store.AddUnmanaged("john");
@@ -100,6 +135,37 @@ public class ScimUserServiceTests
 
         Assert.Equal(204, _service.Delete(id).Status);
         Assert.True(_store.Users.Single().IsDisabled);
+        Assert.Empty(_store.Deleted);
+    }
+
+    [Fact]
+    public void Delete_mode_delete_soft_deletes_user()
+    {
+        var service = new ScimUserService(_store, new ScimSettings { DeleteMode = DeleteMode.Delete });
+        service.Create(User("ak-1", "john"), BaseUrl);
+        var id = _store.Users.Single().Id;
+
+        Assert.Equal(204, service.Delete(id.ToString()).Status);
+        Assert.Contains(id, _store.Deleted);
+        Assert.False(_store.Users.Single().IsDisabled);
+        Assert.Equal(404, service.Get(id.ToString(), BaseUrl).Status);
+    }
+
+    [Fact]
+    public void Create_restores_deleted_user_with_same_external_id()
+    {
+        var service = new ScimUserService(_store, new ScimSettings { DeleteMode = DeleteMode.Delete });
+        service.Create(User("ak-1", "john"), BaseUrl);
+        var id = _store.Users.Single().Id;
+        service.Delete(id.ToString());
+
+        var response = service.Create(User("ak-1", "john"), BaseUrl);
+
+        Assert.Equal(201, response.Status);
+        var user = Assert.Single(_store.Users);
+        Assert.Equal(id, user.Id);
+        Assert.Equal("john", user.Username);
+        Assert.Empty(_store.Deleted);
     }
 
     [Fact]

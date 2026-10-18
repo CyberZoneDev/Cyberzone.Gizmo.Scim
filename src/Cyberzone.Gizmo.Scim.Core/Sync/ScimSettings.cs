@@ -28,4 +28,15 @@ public sealed class ScimSettings
     /// When the email already belongs to another Gizmo user: false = leave email empty, true = reject with 409.
     /// </summary>
     public bool RejectDuplicateEmail { get; set; }
+
+    /// <summary>
+    /// What DELETE /Users/{id} does: Disable (default) or Delete (Gizmo soft delete, removes the profile folder).
+    /// </summary>
+    public DeleteMode DeleteMode { get; set; } = DeleteMode.Disable;
+
+    /// <summary>
+    /// Give users without a password a random one nobody knows. Gizmo lets a customer without a password
+    /// log in with any password, so false leaves synced accounts open to anyone who knows the username.
+    /// </summary>
+    public bool SetRandomPassword { get; set; } = true;
 }

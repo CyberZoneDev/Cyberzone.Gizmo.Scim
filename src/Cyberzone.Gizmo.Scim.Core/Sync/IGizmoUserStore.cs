@@ -17,6 +17,11 @@ public interface IGizmoUserStore
     GizmoUserProfile? FindManagedByExternalId(string externalId);
 
     /// <summary>
+    /// Id of the most recent deleted user with this link attribute value, or null.
+    /// </summary>
+    int? FindDeletedIdByExternalId(string externalId);
+
+    /// <summary>
     /// Managed, not deleted user by exact username (case-insensitive), or null.
     /// </summary>
     GizmoUserProfile? FindManagedByUsername(string username);
@@ -47,6 +52,20 @@ public interface IGizmoUserStore
     void UpdateProfile(GizmoUserProfile profile);
 
     void SetDisabled(int id, bool disabled);
+
+    bool HasPassword(int id);
+
+    void SetPassword(int id, string password);
+
+    /// <summary>
+    /// Gizmo soft delete: sets IsDeleted and removes the user profile folder.
+    /// </summary>
+    void Delete(int id);
+
+    /// <summary>
+    /// Clears IsDeleted. The removed profile folder is not restored.
+    /// </summary>
+    void Undelete(int id);
 
     /// <summary>
     /// Sets (non-null value) or removes (null value) user attributes.

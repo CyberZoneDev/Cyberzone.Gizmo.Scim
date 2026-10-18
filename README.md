@@ -46,6 +46,8 @@ The settings file is re-read when it changes, no restart needed.
 | `AllowedAttributes`    | `[]`          | Gizmo attribute names Authentik may write via the extension schema. Others are ignored               |
 | `PublicBaseUrl`        | `""`          | External URL of `/scim/v2` behind the proxy, used in `meta.location`. Empty = taken from the request |
 | `RejectDuplicateEmail` | `false`       | `true`: 409 when the email belongs to another user. `false`: user is saved without email             |
+| `DeleteMode`           | `Disable`     | What `DELETE` does: `Disable`, or `Delete` (Gizmo soft delete, also removes the profile folder)      |
+| `SetRandomPassword`    | `true`        | Give synced users without a password a random one. `false`: they can log in with any password        |
 
 ## Authentik
 
@@ -73,11 +75,17 @@ Each name must be listed in `AllowedAttributes`. An allowed attribute missing fr
 - SCIM `id` = Gizmo `UserId`; link attribute = `externalId`. Only linked users are visible through SCIM,
   so existing club accounts are never matched by name or email.
 - `POST /Users` with an already linked `externalId` updates that user instead of creating a duplicate.
+  A deleted user with that `externalId` is restored (undeleted) first.
 - New users get the default user group (`IsDefault`). Groups are never changed afterwards.
 - `userName` is corrected to Gizmo rules: max 30 chars, no spaces or `\ / : * ? " < > |`, no trailing dot,
   no reserved Windows names. Taken names get `_2`, `_3`, ...
+- Gizmo lets a customer without a password log in with any password. With `SetRandomPassword` the plugin sets
+  a random password on create and on the next update of a user that has none; a password set in Gizmo is kept.
+  Passwords are never synced from Authentik.
 - Synced fields: userName, name.givenName, name.familyName, primary email, mobile phone, active, allowed attributes.
   Everything else (balance, group, notes, address, ...) is left as is.
-- `DELETE /Users/{id}` disables the user; nothing is deleted.
+- `DELETE /Users/{id}` disables the user (`DeleteMode: Disable`) or soft-deletes it (`DeleteMode: Delete`).
+  Gizmo removes the profile folder of a deleted user from disk, and undelete does not bring it back.
+  Authentik also sends `DELETE` when a user just leaves the provider's scope, so a scope mistake deletes many users.
 - Writes go through the same `Service` methods as the operator console (`UserCreate`, `UserUpdate`, `UserDisable`, ...),
   so server events and profile folder moves happen as usual.

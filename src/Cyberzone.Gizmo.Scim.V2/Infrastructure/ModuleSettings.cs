@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Cyberzone.Gizmo.Scim.Core.Sync;
 
 namespace Cyberzone.Gizmo.Scim.V2.Infrastructure;
@@ -42,7 +43,8 @@ internal static class ModuleSettings
                         new JsonSerializerOptions
                         {
                             PropertyNameCaseInsensitive = true, ReadCommentHandling = JsonCommentHandling.Skip,
-                            AllowTrailingCommas = true
+                            AllowTrailingCommas = true,
+                            Converters = { new JsonStringEnumConverter() },
                         });
                     _cachedWriteTime = writeTime;
                 }

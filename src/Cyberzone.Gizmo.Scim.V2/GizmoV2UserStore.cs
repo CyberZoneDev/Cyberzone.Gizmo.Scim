@@ -10,7 +10,7 @@ namespace Cyberzone.Gizmo.Scim.V2;
 
 /// <summary>
 /// Gizmo v2 implementation. Reads go straight to the database; writes go through the same
-/// Service methods the operator console uses (UserCreate, UserUpdate, UserDisable, UserAttribute*),
+/// Service methods the operator console uses (UserCreate, UserUpdate, UserDisable, UserDelete, UserAttribute*),
 /// so renames move the user profile folder and connected clients get change events.
 /// </summary>
 internal sealed class GizmoV2UserStore : IGizmoUserStore
@@ -39,17 +39,23 @@ internal sealed class GizmoV2UserStore : IGizmoUserStore
     {
         using var cx = _service.GetDbNonProxyContext();
         var linkId = AttributeId(_linkAttribute);
-        var userId = cx.UserAttribute.AsNoTracking()
-            .Where(x => x.AttributeId == linkId && x.Value == externalId)
-            .Select(x => x.UserId)
+        var user = ManagedUsers(cx, linkId)
+            .Where(x => cx.UserAttribute.Any(a => a.UserId == x.Id && a.AttributeId == linkId && a.Value == externalId))
+            .OrderBy(x => x.Id)
             .FirstOrDefault();
-        if (userId == 0)
-        {
-            return null;
-        }
-
-        var user = ManagedUsers(cx, linkId).SingleOrDefault(x => x.Id == userId);
         return user is null ? null : ToProfile(cx, user, linkId);
+    }
+
+    public int? FindDeletedIdByExternalId(string externalId)
+    {
+        using var cx = _service.GetDbNonProxyContext();
+        var linkId = AttributeId(_linkAttribute);
+        return cx.UsersMember.AsNoTracking()
+            .Where(x => x.IsDeleted &&
+                        cx.UserAttribute.Any(a => a.UserId == x.Id && a.AttributeId == linkId && a.Value == externalId))
+            .OrderByDescending(x => x.Id)
+            .Select(x => (int?)x.Id)
+            .FirstOrDefault();
     }
 
     public GizmoUserProfile? FindManagedByUsername(string username)
@@ -154,6 +160,18 @@ internal sealed class GizmoV2UserStore : IGizmoUserStore
     }
 
     public void SetDisabled(int id, bool disabled) => _service.UserDisable(id, disabled);
+
+    public bool HasPassword(int id)
+    {
+        using var cx = _service.GetDbNonProxyContext();
+        return cx.Credentials.AsNoTracking().Any(x => x.Id == id && x.Password != null);
+    }
+
+    public void SetPassword(int id, string password) => _service.UserPasswordSet(id, password);
+
+    public void Delete(int id) => _service.UserDelete(id);
+
+    public void Undelete(int id) => _service.UserUndelete(id);
 
     public void SetAttributes(int id, IReadOnlyDictionary<string, string?> attributes)
     {

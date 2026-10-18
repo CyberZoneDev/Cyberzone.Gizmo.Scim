@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Cyberzone.Gizmo.Scim.Core.Scim;
@@ -8,7 +9,7 @@ namespace Cyberzone.Gizmo.Scim.Core.Sync;
 /// <summary>
 /// SCIM /Users semantics on top of <see cref="IGizmoUserStore"/>.
 /// Link: SCIM id = Gizmo user id, SCIM externalId = Gizmo link attribute.
-/// Users are never deleted, only disabled. Groups are not synchronized.
+/// DELETE disables or soft-deletes the user (<see cref="ScimSettings.DeleteMode"/>). Groups are not synchronized.
 /// </summary>
 public sealed class ScimUserService
 {
@@ -64,8 +65,8 @@ public sealed class ScimUserService
             throw ScimException.BadRequest("invalidValue", "externalId is required to link the user.");
         }
 
-        // Idempotent create: the same identity always maps to the same Gizmo user.
-        var existing = _store.FindManagedByExternalId(user.ExternalId!);
+        // Idempotent create: the same identity always maps to the same Gizmo user, even after a delete.
+        var existing = _store.FindManagedByExternalId(user.ExternalId!) ?? Undelete(user.ExternalId!);
         if (existing is not null)
         {
             Apply(existing, user);
@@ -89,6 +90,7 @@ public sealed class ScimUserService
 
         profile.Id = _store.Create(profile);
         Log($"Created Gizmo user {profile.Id} '{profile.Username}' for externalId {profile.ExternalId}.");
+        EnsurePassword(profile.Id, isNew: true);
 
         var attributes = AttributeChanges(user.Attributes, current: null);
         if (attributes.Count > 0)
@@ -121,12 +123,17 @@ public sealed class ScimUserService
     });
 
     /// <summary>
-    /// DELETE disables the user. Gizmo keeps the account and its history.
+    /// DELETE disables the user or, with <see cref="DeleteMode.Delete"/>, soft-deletes it.
     /// </summary>
     public ScimResponse Delete(string id) => RunLocked(() =>
     {
         var existing = FindById(id) ?? throw ScimException.NotFound($"User {id} not found.");
-        if (!existing.IsDisabled)
+        if (_settings.DeleteMode == DeleteMode.Delete)
+        {
+            _store.Delete(existing.Id);
+            Log($"Deleted Gizmo user {existing.Id} '{existing.Username}' (deleted in identity provider).");
+        }
+        else if (!existing.IsDisabled)
         {
             _store.SetDisabled(existing.Id, true);
             Log($"Disabled Gizmo user {existing.Id} '{existing.Username}' (deleted in identity provider).");
@@ -236,11 +243,29 @@ public sealed class ScimUserService
             _store.SetAttributes(current.Id, attributes);
         }
 
+        EnsurePassword(current.Id, isNew: false);
+
         var disabled = !user.Active;
         if (disabled != current.IsDisabled)
         {
             _store.SetDisabled(current.Id, disabled);
             Log($"{(disabled ? "Disabled" : "Enabled")} Gizmo user {current.Id} '{updated.Username}'.");
+        }
+    }
+
+    // Gizmo accepts any password for a customer without one, so synced users get a random password nobody knows.
+    // A password already set (e.g. by an operator) is kept.
+    private void EnsurePassword(int id, bool isNew)
+    {
+        if (!_settings.SetRandomPassword || (!isNew && _store.HasPassword(id)))
+        {
+            return;
+        }
+
+        _store.SetPassword(id, Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
+        if (!isNew)
+        {
+            Log($"Set a random password for Gizmo user {id}, it had none.");
         }
     }
 
@@ -343,6 +368,19 @@ public sealed class ScimUserService
         }
 
         return changes;
+    }
+
+    private GizmoUserProfile? Undelete(string externalId)
+    {
+        if (_store.FindDeletedIdByExternalId(externalId) is not { } id)
+        {
+            return null;
+        }
+
+        _store.Undelete(id);
+        var profile = _store.FindManagedById(id);
+        Log($"Restored deleted Gizmo user {id} '{profile?.Username}' for externalId {externalId}.");
+        return profile;
     }
 
     private GizmoUserProfile? FindById(string id) =>

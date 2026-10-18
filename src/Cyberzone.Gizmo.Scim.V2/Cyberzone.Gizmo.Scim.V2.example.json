@@ -3,5 +3,7 @@
   "LinkAttributeName": "AuthentikId",
   "AllowedAttributes": [],
   "PublicBaseUrl": "",
-  "RejectDuplicateEmail": false
+  "RejectDuplicateEmail": false,
+  "DeleteMode": "Disable",
+  "SetRandomPassword": true
 }
